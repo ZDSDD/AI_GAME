@@ -36,7 +36,6 @@ const (
 )
 
 func NewDungeon(width, height int) *Dungeon {
-
 	d := &Dungeon{
 		Cells:  make([][]Cell, height),
 		Width:  width,
@@ -58,20 +57,34 @@ func NewDungeon(width, height int) *Dungeon {
 	entranceX, entranceY := d.placeRandomFeature(Empty, Entrance)
 	d.Entrance = [2]int{entranceX, entranceY}
 
-	// Place exit (ensure it's far from entrance)
-	var exitX, exitY int
-	for {
-		exitX, exitY = d.placeRandomFeature(Empty, Exit)
-		// Check if exit is at least 1/3 of the dungeon size away from the entrance
-		minDistance := (width + height) / 3
-		dx, dy := entranceX-exitX, entranceY-exitY
-		distance := dx*dx + dy*dy
-		if distance >= minDistance*minDistance {
-			d.Exit = [2]int{exitX, exitY}
-			break
+	// Find dead ends that are far from the entrance
+	deadEnds := d.findDeadEnds()
+
+	// Sort dead ends by distance from entrance (in descending order)
+	entrancePoint := [2]int{entranceX, entranceY}
+	d.sortDeadEndsByDistance(deadEnds, entrancePoint)
+
+	// Place exit at the furthest dead end
+	if len(deadEnds) > 0 {
+		exitX, exitY := deadEnds[0][0], deadEnds[0][1]
+		d.Cells[exitY][exitX] = Cell{Type: Exit}
+		d.Exit = [2]int{exitX, exitY}
+	} else {
+		// Fallback if no suitable dead ends found
+		var exitX, exitY int
+		for {
+			exitX, exitY = d.placeRandomFeature(Empty, Exit)
+			// Check if exit is at least 1/3 of the dungeon size away from the entrance
+			minDistance := (width + height) / 3
+			dx, dy := entranceX-exitX, entranceY-exitY
+			distance := dx*dx + dy*dy
+			if distance >= minDistance*minDistance {
+				d.Exit = [2]int{exitX, exitY}
+				break
+			}
+			// Revert and try again
+			d.Cells[exitY][exitX] = Cell{Type: Empty}
 		}
-		// Revert and try again
-		d.Cells[exitY][exitX] = Cell{Type: Empty}
 	}
 
 	// Place monsters in valid locations (empty cells only)
@@ -85,6 +98,57 @@ func NewDungeon(width, height int) *Dungeon {
 	}
 
 	return d
+}
+
+// Find all dead ends in the dungeon (empty cells with only one neighboring empty cell)
+func (d *Dungeon) findDeadEnds() [][2]int {
+	// Directions for checking neighbors (up, right, down, left)
+	dirs := []struct{ dx, dy int }{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}
+
+	deadEnds := [][2]int{}
+
+	for y := 1; y < d.Height-1; y++ {
+		for x := 1; x < d.Width-1; x++ {
+			// Skip if not empty
+			if d.Cells[y][x].Type != Empty {
+				continue
+			}
+
+			// Count empty neighbors
+			emptyNeighbors := 0
+			for _, dir := range dirs {
+				nx, ny := x+dir.dx, y+dir.dy
+				if nx >= 0 && nx < d.Width && ny >= 0 && ny < d.Height && d.Cells[ny][nx].Type == Empty {
+					emptyNeighbors++
+				}
+			}
+
+			// If only one empty neighbor, this is a dead end
+			if emptyNeighbors == 1 {
+				deadEnds = append(deadEnds, [2]int{x, y})
+			}
+		}
+	}
+
+	return deadEnds
+}
+
+// Sort dead ends by distance from a point (descending order - farthest first)
+func (d *Dungeon) sortDeadEndsByDistance(deadEnds [][2]int, point [2]int) {
+	// Simple bubble sort based on distance
+	for i := 0; i < len(deadEnds)-1; i++ {
+		for j := 0; j < len(deadEnds)-i-1; j++ {
+			dist1 := (deadEnds[j][0]-point[0])*(deadEnds[j][0]-point[0]) +
+				(deadEnds[j][1]-point[1])*(deadEnds[j][1]-point[1])
+			dist2 := (deadEnds[j+1][0]-point[0])*(deadEnds[j+1][0]-point[0]) +
+				(deadEnds[j+1][1]-point[1])*(deadEnds[j+1][1]-point[1])
+
+			// Sort in descending order (furthest first)
+			if dist1 < dist2 {
+				deadEnds[j], deadEnds[j+1] = deadEnds[j+1], deadEnds[j]
+			}
+		}
+	}
 }
 
 // Helper function to place a feature in a random empty cell
