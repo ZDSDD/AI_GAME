@@ -16,7 +16,7 @@ type Player struct {
 }
 
 func NewPlayer(startPos [2]int) *Player {
-	return &Player{X: startPos[0], Y: startPos[1], Health: 100, Score: 0, FOVEnabled: true, FOVRadius: 2}
+	return &Player{X: startPos[0], Y: startPos[1], Health: 100, Score: 0, FOVEnabled: false, FOVRadius: 2}
 }
 
 func (p *Player) MoveTo(x, y int, dungeon *Dungeon) {
@@ -33,14 +33,17 @@ func (p *Player) MoveTo(x, y int, dungeon *Dungeon) {
 
 	switch cell.Type {
 	case Empty, Entrance, Exit:
+		// Move to the new tile
 		p.X, p.Y = x, y
 	case Monster:
+		// Decrease health when encountering a monster and add score
 		p.Health -= 10
-		dungeon.Cells[y][x] = Cell{Type: Empty}
+		dungeon.Cells[y][x] = Cell{Type: Empty} // Remove monster from dungeon
 		p.Score += 10
 	case Treasure:
+		// Increase score and remove treasure from dungeon
 		p.Score += 20
-		dungeon.Cells[y][x] = Cell{Type: Empty}
+		dungeon.Cells[y][x] = Cell{Type: Empty} // Remove treasure
 	}
 }
 

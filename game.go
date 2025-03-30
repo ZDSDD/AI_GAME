@@ -18,8 +18,8 @@ type Game struct {
 
 func NewGame() *Game {
 	dungeon := NewDungeon(dungeonWidth, dungeonHeight)
-	x, y := dungeon.FindEntrance()
-	player := NewPlayer([2]int{x, y})
+
+	player := NewPlayer([2]int{5, 4})
 
 	return &Game{dungeon: dungeon, player: player}
 }
