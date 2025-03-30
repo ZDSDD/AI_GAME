@@ -80,7 +80,7 @@ func (d *Dungeon) Draw(screen *ebiten.Image, player *Player) {
 			var clr color.RGBA
 			switch cell.Type {
 			case Empty:
-				clr = color.RGBA{5, 5, 5, 255}
+				clr = color.RGBA{30, 30, 30, 255}
 			case Monster:
 				clr = color.RGBA{255, 0, 0, 255}
 			case Treasure:
