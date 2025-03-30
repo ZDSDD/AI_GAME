@@ -28,13 +28,13 @@ func (g *Game) Update() error {
 	mouseX, mouseY := ebiten.CursorPosition()
 	g.hoverX, g.hoverY = mouseX/tileSize, mouseY/tileSize
 
-	HandleInput(g)
+	HandleInput(g, g.player)
 
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.dungeon.Draw(screen)
+	g.dungeon.Draw(screen, g.player)
 	g.player.Draw(screen)
 
 	// Highlight tile on hover

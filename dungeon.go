@@ -64,15 +64,23 @@ func (d *Dungeon) FindEntrance() (int, int) {
 	}
 	return 0, 0
 }
+func isWithinFOV(px, py, x, y, radius int) bool {
+	dx := px - x
+	dy := py - y
+	return dx*dx+dy*dy <= radius*radius // Circular FOV
+}
 
-func (d *Dungeon) Draw(screen *ebiten.Image) {
+func (d *Dungeon) Draw(screen *ebiten.Image, player *Player) {
 	for y, row := range d.Cells {
 		for x, cell := range row {
-			var clr color.RGBA
+			if player.FOVEnabled && !isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
+				continue // Skip drawing tiles outside the FOV
+			}
 
+			var clr color.RGBA
 			switch cell.Type {
 			case Empty:
-				clr = color.RGBA{80, 80, 80, 255}
+				clr = color.RGBA{5, 5, 5, 255}
 			case Monster:
 				clr = color.RGBA{255, 0, 0, 255}
 			case Treasure:

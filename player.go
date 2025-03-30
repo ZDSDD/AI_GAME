@@ -8,13 +8,15 @@ import (
 )
 
 type Player struct {
-	X, Y   int
-	Health int
-	Score  int
+	X, Y       int
+	Health     int
+	Score      int
+	FOVEnabled bool
+	FOVRadius  int
 }
 
 func NewPlayer(startPos [2]int) *Player {
-	return &Player{X: startPos[0], Y: startPos[1], Health: 100, Score: 0}
+	return &Player{X: startPos[0], Y: startPos[1], Health: 100, Score: 0, FOVEnabled: true, FOVRadius: 2}
 }
 
 func (p *Player) MoveTo(x, y int, dungeon *Dungeon) {
