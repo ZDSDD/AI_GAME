@@ -43,7 +43,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// Display player stats
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d, Score: %d", g.player.Health, g.player.Score), 10, dungeonHeight*tileSize+10)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d, Score: %d", g.player.Health, g.player.Score), 10, 10)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {

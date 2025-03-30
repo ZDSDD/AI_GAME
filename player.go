@@ -16,7 +16,7 @@ type Player struct {
 }
 
 func NewPlayer(startPos [2]int) *Player {
-	return &Player{X: startPos[0], Y: startPos[1], Health: 100, Score: 0, FOVEnabled: false, FOVRadius: 2}
+	return &Player{X: startPos[0], Y: startPos[1], Health: 100, Score: 0, FOVEnabled: false, FOVRadius: 6}
 }
 
 func (p *Player) MoveTo(x, y int, dungeon *Dungeon) {

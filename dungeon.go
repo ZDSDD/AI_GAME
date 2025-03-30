@@ -31,9 +31,8 @@ type Dungeon struct {
 }
 
 const (
-	FOVRadius    = 5
-	NumMonsters  = 5
-	NumTreasures = 5
+	NumMonsters  = 10
+	NumTreasures = 10
 )
 
 func NewDungeon(width, height int) *Dungeon {
@@ -53,7 +52,7 @@ func NewDungeon(width, height int) *Dungeon {
 	}
 
 	// Generate maze with proper paths
-	d.generateMaze()
+	d.generateMaze(d.Width, d.Height)
 
 	// Place entrance
 	entranceX, entranceY := d.placeRandomFeature(Empty, Entrance)
@@ -99,112 +98,68 @@ func (d *Dungeon) placeRandomFeature(requiredType, newType CellType) (int, int) 
 	}
 }
 
-// Properly implemented Prim's algorithm for maze generation
-func (d *Dungeon) generateMaze() {
-	// Start with a grid full of walls
-	width, height := d.Width, d.Height
-
-	// Create a list to track cells that have been visited
-	visited := make([][]bool, height)
+func (d *Dungeon) generateMaze(width, height int) {
+	// Initialize all cells as walls
 	for y := 0; y < height; y++ {
-		visited[y] = make([]bool, width)
+		for x := 0; x < width; x++ {
+			d.Cells[y][x].Type = Wall
+		}
 	}
 
-	// Pick a random starting point
-	startX, startY := rand.Intn(width-2)+1, rand.Intn(height-2)+1
-	d.Cells[startY][startX] = Cell{Type: Empty}
-	visited[startY][startX] = true
+	// Directions for moving two cells (up, down, left, right)
+	dirs := []struct{ dx, dy int }{{-2, 0}, {2, 0}, {0, -2}, {0, 2}}
 
-	// Add walls of the starting cell to the wall list
+	// Choose a starting cell (odd coordinates to align with rooms)
+	startX, startY := 1, 1
+	if startX >= width || startY >= height {
+		startX, startY = 1, 1
+	}
+	d.Cells[startY][startX].Type = Empty
+
+	// Initialize the list of frontier walls
 	walls := []struct{ x, y int }{}
-
-	// Add neighboring walls
-	if startX > 1 {
-		walls = append(walls, struct{ x, y int }{startX - 1, startY})
-	}
-	if startY > 1 {
-		walls = append(walls, struct{ x, y int }{startX, startY - 1})
-	}
-	if startX < width-2 {
-		walls = append(walls, struct{ x, y int }{startX + 1, startY})
-	}
-	if startY < height-2 {
-		walls = append(walls, struct{ x, y int }{startX, startY + 1})
+	for _, dir := range dirs {
+		nx, ny := startX+dir.dx, startY+dir.dy
+		if nx >= 0 && nx < width && ny >= 0 && ny < height {
+			walls = append(walls, struct{ x, y int }{nx, ny})
+		}
 	}
 
-	// Direction vectors for checking neighbors
-	dx := []int{-1, 1, 0, 0}
-	dy := []int{0, 0, -1, 1}
-
-	// Process all walls
 	for len(walls) > 0 {
-		// Pick a random wall
-		wallIndex := rand.Intn(len(walls))
-		wallX, wallY := walls[wallIndex].x, walls[wallIndex].y
+		// Pick a random wall from the frontier
+		idx := rand.Intn(len(walls))
+		wall := walls[idx]
+		walls = append(walls[:idx], walls[idx+1:]...)
 
-		// Remove the wall from the list
-		walls[wallIndex] = walls[len(walls)-1]
-		walls = walls[:len(walls)-1]
+		// Check if the wall is still a wall
+		if d.Cells[wall.y][wall.x].Type != Wall {
+			continue
+		}
 
-		// Count visited cells on either side of the wall
-		visitedCount := 0
-		emptyNeighborX, emptyNeighborY := -1, -1
-
-		for i := 0; i < 4; i++ {
-			nx, ny := wallX+dx[i], wallY+dy[i]
-			if nx >= 0 && nx < width && ny >= 0 && ny < height && visited[ny][nx] {
-				visitedCount++
-				emptyNeighborX, emptyNeighborY = nx, ny
+		// Find visited neighbors (two cells away)
+		var visitedNeighbors [][2]int
+		for _, dir := range dirs {
+			nx, ny := wall.x+dir.dx, wall.y+dir.dy
+			if nx >= 0 && nx < width && ny >= 0 && ny < height && d.Cells[ny][nx].Type == Empty {
+				visitedNeighbors = append(visitedNeighbors, [2]int{nx, ny})
 			}
 		}
 
-		// If exactly one side has been visited, make this wall a passage
-		if visitedCount == 1 {
-			// Make sure we're not removing outer walls
-			if wallX > 0 && wallX < width-1 && wallY > 0 && wallY < height-1 {
-				// Find the cell on the other side of the wall from the visited cell
-				newCellX, newCellY := 2*wallX-emptyNeighborX, 2*wallY-emptyNeighborY
+		if len(visitedNeighbors) > 0 {
+			// Pick a random visited neighbor
+			neighbor := visitedNeighbors[rand.Intn(len(visitedNeighbors))]
+			// Carve the path between the wall and the neighbor
+			midX := (wall.x + neighbor[0]) / 2
+			midY := (wall.y + neighbor[1]) / 2
+			d.Cells[wall.y][wall.x].Type = Empty
+			d.Cells[midY][midX].Type = Empty
 
-				// Check if the new cell is within bounds
-				if newCellX >= 0 && newCellX < width && newCellY >= 0 && newCellY < height && !visited[newCellY][newCellX] {
-					// Remove the wall (make it a passage)
-					d.Cells[wallY][wallX] = Cell{Type: Empty}
-					visited[wallY][wallX] = true
-
-					// Mark the new cell as empty
-					d.Cells[newCellY][newCellX] = Cell{Type: Empty}
-					visited[newCellY][newCellX] = true
-
-					// Add the walls of the new cell to the wall list
-					for i := 0; i < 4; i++ {
-						nx, ny := newCellX+dx[i], newCellY+dy[i]
-						if nx >= 0 && nx < width && ny >= 0 && ny < height && !visited[ny][nx] && d.Cells[ny][nx].Type == Wall {
-							walls = append(walls, struct{ x, y int }{nx, ny})
-						}
-					}
+			// Add new frontier walls
+			for _, dir := range dirs {
+				nx, ny := wall.x+dir.dx, wall.y+dir.dy
+				if nx >= 0 && nx < width && ny >= 0 && ny < height && d.Cells[ny][nx].Type == Wall {
+					walls = append(walls, struct{ x, y int }{nx, ny})
 				}
-			}
-		}
-	}
-
-	// Create some additional random connections to make the maze less tree-like
-	// This adds loops to the maze for more interesting gameplay
-	numExtraConnections := (width * height) / 50
-	for i := 0; i < numExtraConnections; i++ {
-		x, y := rand.Intn(width-2)+1, rand.Intn(height-2)+1
-		if d.Cells[y][x].Type == Wall {
-			// Count neighboring passages
-			passageCount := 0
-			for j := 0; j < 4; j++ {
-				nx, ny := x+dx[j], y+dy[j]
-				if nx >= 0 && nx < width && ny >= 0 && ny < height && d.Cells[ny][nx].Type == Empty {
-					passageCount++
-				}
-			}
-
-			// If at least two neighbors are passages, remove this wall
-			if passageCount >= 2 {
-				d.Cells[y][x] = Cell{Type: Empty}
 			}
 		}
 	}
