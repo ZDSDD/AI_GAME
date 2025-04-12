@@ -27,17 +27,7 @@ func (g *Game) Update() error {
 	g.hoverX, g.hoverY = mouseX/tileSize, mouseY/tileSize
 
 	HandleInput(g, g.player)
-
-	if g.hoverX >= 0 && g.hoverX < dungeonWidth && g.hoverY >= 0 && g.hoverY < dungeonHeight {
-		cell := g.dungeon.Cells[g.hoverY][g.hoverX]
-		if cell.Type != Wall {
-			start := [2]int{g.player.X, g.player.Y}
-			end := [2]int{g.hoverX, g.hoverY}
-			g.pathToHover = g.dungeon.FindPath(start, end)
-		} else {
-			g.pathToHover = nil
-		}
-	}
+	g.player.Update(g.dungeon) // Animate player path
 
 	return nil
 }

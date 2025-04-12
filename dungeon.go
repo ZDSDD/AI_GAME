@@ -274,9 +274,10 @@ func (d *Dungeon) Draw(screen *ebiten.Image, player *Player) {
 		}
 	}
 }
-func (d *Dungeon) FindPath(start, goal [2]int) [][2]int {
+
+func (d *Dungeon) FindPath(start, goal Point) []Point {
 	type Node struct {
-		Pos   [2]int
+		Pos   Point
 		Steps int
 		Prev  *Node
 	}
@@ -290,27 +291,29 @@ func (d *Dungeon) FindPath(start, goal [2]int) [][2]int {
 	queue := []*Node{{Pos: start}}
 	var goalNode *Node
 
-	dirs := [][2]int{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}
+	dirs := []Point{
+		{0, -1}, {1, 0}, {0, 1}, {-1, 0},
+	}
 
 	for len(queue) > 0 {
 		current := queue[0]
 		queue = queue[1:]
 
-		x, y := current.Pos[0], current.Pos[1]
-		if x == goal[0] && y == goal[1] {
+		x, y := current.Pos.x, current.Pos.y
+		if x == goal.x && y == goal.y {
 			goalNode = current
 			break
 		}
 
 		for _, dir := range dirs {
-			nx, ny := x+dir[0], y+dir[1]
+			nx, ny := x+dir.x, y+dir.y
 			if nx >= 0 && ny >= 0 && nx < width && ny < height &&
 				!visited[ny][nx] &&
 				d.Cells[ny][nx].Type != Wall {
 
 				visited[ny][nx] = true
 				queue = append(queue, &Node{
-					Pos:   [2]int{nx, ny},
+					Pos:   Point{nx, ny},
 					Prev:  current,
 					Steps: current.Steps + 1,
 				})
@@ -318,12 +321,14 @@ func (d *Dungeon) FindPath(start, goal [2]int) [][2]int {
 		}
 	}
 
+	if goalNode == nil {
+		return nil
+	}
+
 	// Reconstruct path
-	path := [][2]int{}
-	if goalNode != nil {
-		for node := goalNode; node != nil; node = node.Prev {
-			path = append([][2]int{node.Pos}, path...)
-		}
+	var path []Point
+	for node := goalNode; node != nil; node = node.Prev {
+		path = append([]Point{node.Pos}, path...)
 	}
 	return path
 }
