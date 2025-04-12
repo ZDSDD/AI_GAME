@@ -13,6 +13,7 @@ type Game struct {
 	dungeon        *Dungeon
 	player         *Player
 	hoverX, hoverY int
+	pathToHover    [][2]int
 }
 
 func NewGame() *Game {
@@ -27,11 +28,15 @@ func (g *Game) Update() error {
 
 	HandleInput(g, g.player)
 
-	// Check if player stepped on Exit
-	if g.player.X == g.dungeon.Exit[0] && g.player.Y == g.dungeon.Exit[1] {
-		newLevel := g.dungeon.Level + 1
-		g.dungeon = NewDungeon(dungeonWidth, dungeonHeight, newLevel)
-		g.player = NewPlayer(g.dungeon.Entrance)
+	if g.hoverX >= 0 && g.hoverX < dungeonWidth && g.hoverY >= 0 && g.hoverY < dungeonHeight {
+		cell := g.dungeon.Cells[g.hoverY][g.hoverX]
+		if cell.Type != Wall {
+			start := [2]int{g.player.X, g.player.Y}
+			end := [2]int{g.hoverX, g.hoverY}
+			g.pathToHover = g.dungeon.FindPath(start, end)
+		} else {
+			g.pathToHover = nil
+		}
 	}
 
 	return nil
@@ -58,6 +63,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Display player stats
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d, Score: %d | Dungeon Level: %d", g.player.Health, g.player.Score, g.dungeon.Level), 10, 10)
+	for _, p := range g.pathToHover {
+		vector.DrawFilledRect(screen, float32(p[0]*tileSize), float32(p[1]*tileSize), float32(tileSize), float32(tileSize), color.RGBA{20, 30, 50, 50}, false)
+	}
 
 }
 

@@ -274,3 +274,56 @@ func (d *Dungeon) Draw(screen *ebiten.Image, player *Player) {
 		}
 	}
 }
+func (d *Dungeon) FindPath(start, goal [2]int) [][2]int {
+	type Node struct {
+		Pos   [2]int
+		Steps int
+		Prev  *Node
+	}
+
+	width, height := d.Width, d.Height
+	visited := make([][]bool, height)
+	for i := range visited {
+		visited[i] = make([]bool, width)
+	}
+
+	queue := []*Node{{Pos: start}}
+	var goalNode *Node
+
+	dirs := [][2]int{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		x, y := current.Pos[0], current.Pos[1]
+		if x == goal[0] && y == goal[1] {
+			goalNode = current
+			break
+		}
+
+		for _, dir := range dirs {
+			nx, ny := x+dir[0], y+dir[1]
+			if nx >= 0 && ny >= 0 && nx < width && ny < height &&
+				!visited[ny][nx] &&
+				d.Cells[ny][nx].Type != Wall {
+
+				visited[ny][nx] = true
+				queue = append(queue, &Node{
+					Pos:   [2]int{nx, ny},
+					Prev:  current,
+					Steps: current.Steps + 1,
+				})
+			}
+		}
+	}
+
+	// Reconstruct path
+	path := [][2]int{}
+	if goalNode != nil {
+		for node := goalNode; node != nil; node = node.Prev {
+			path = append([][2]int{node.Pos}, path...)
+		}
+	}
+	return path
+}
