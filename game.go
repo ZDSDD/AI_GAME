@@ -17,10 +17,8 @@ type Game struct {
 }
 
 func NewGame() *Game {
-	dungeon := NewDungeon(dungeonWidth, dungeonHeight)
-
+	dungeon := NewDungeon(dungeonWidth, dungeonHeight, 1)
 	player := NewPlayer(dungeon.Entrance)
-
 	return &Game{dungeon: dungeon, player: player}
 }
 
@@ -29,6 +27,13 @@ func (g *Game) Update() error {
 	g.hoverX, g.hoverY = mouseX/tileSize, mouseY/tileSize
 
 	HandleInput(g, g.player)
+
+	// Check if player stepped on Exit
+	if g.player.X == g.dungeon.Exit[0] && g.player.Y == g.dungeon.Exit[1] {
+		newLevel := g.dungeon.Level + 1
+		g.dungeon = NewDungeon(dungeonWidth, dungeonHeight, newLevel)
+		g.player = NewPlayer(g.dungeon.Entrance)
+	}
 
 	return nil
 }
@@ -43,7 +48,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// Display player stats
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d, Score: %d", g.player.Health, g.player.Score), 10, 10)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d, Score: %d | Dungeon Level: %d", g.player.Health, g.player.Score, g.dungeon.Level), 10, 10)
+
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {

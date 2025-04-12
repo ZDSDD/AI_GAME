@@ -28,6 +28,8 @@ type Dungeon struct {
 	Width, Height int
 	Entrance      [2]int
 	Exit          [2]int
+	Visited       [][]bool
+	Level         int
 }
 
 const (
@@ -35,18 +37,21 @@ const (
 	NumTreasures = 10
 )
 
-func NewDungeon(width, height int) *Dungeon {
+func NewDungeon(width, height int, level int) *Dungeon {
 	d := &Dungeon{
-		Cells:  make([][]Cell, height),
-		Width:  width,
-		Height: height,
+		Cells:   make([][]Cell, height),
+		Width:   width,
+		Height:  height,
+		Visited: make([][]bool, height),
+		Level:   level,
 	}
-
-	// Initialize all cells as walls
+	// initialize Cells and Visited
 	for y := 0; y < height; y++ {
 		d.Cells[y] = make([]Cell, width)
+		d.Visited[y] = make([]bool, width)
 		for x := 0; x < width; x++ {
 			d.Cells[y][x] = Cell{Type: Wall}
+			d.Visited[y][x] = false
 		}
 	}
 
@@ -234,8 +239,14 @@ func isWithinFOV(px, py, x, y, radius int) bool {
 func (d *Dungeon) Draw(screen *ebiten.Image, player *Player) {
 	for y, row := range d.Cells {
 		for x, cell := range row {
+			// If FOV is enabled and tile is outside it
 			if player.FOVEnabled && !isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
-				continue // Skip drawing tiles outside the FOV
+				if !d.Visited[y][x] {
+					continue // Never seen and out of FOV
+				}
+			} else {
+				// Inside current FOV – mark as visited
+				d.Visited[y][x] = true
 			}
 
 			var clr color.RGBA
@@ -252,6 +263,11 @@ func (d *Dungeon) Draw(screen *ebiten.Image, player *Player) {
 				clr = color.RGBA{0, 255, 0, 255}
 			case Exit:
 				clr = color.RGBA{0, 0, 255, 255}
+			}
+
+			// Darken if previously visited but out of current FOV
+			if player.FOVEnabled && !isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
+				clr = color.RGBA{clr.R / 2, clr.G / 2, clr.B / 2, clr.A}
 			}
 
 			vector.DrawFilledRect(screen, float32(x*tileSize), float32(y*tileSize), float32(tileSize), float32(tileSize), clr, false)
