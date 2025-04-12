@@ -162,71 +162,67 @@ func (d *Dungeon) placeRandomFeature(requiredType, newType CellType) (int, int) 
 	}
 }
 
+type Point struct{ x, y int }
+
 func (d *Dungeon) generateMaze(width, height int) {
-	// Initialize all cells as walls
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			d.Cells[y][x].Type = Wall
 		}
 	}
 
-	// Directions for moving two cells (up, down, left, right)
-	dirs := []struct{ dx, dy int }{{-2, 0}, {2, 0}, {0, -2}, {0, 2}}
+	dirs := []Point{{-2, 0}, {2, 0}, {0, -2}, {0, 2}}
+	start := Point{1, 1}
+	d.Cells[start.y][start.x].Type = Empty
 
-	// Choose a starting cell (odd coordinates to align with rooms)
-	startX, startY := 1, 1
-	if startX >= width || startY >= height {
-		startX, startY = 1, 1
-	}
-	d.Cells[startY][startX].Type = Empty
-
-	// Initialize the list of frontier walls
-	walls := []struct{ x, y int }{}
+	walls := []Point{}
 	for _, dir := range dirs {
-		nx, ny := startX+dir.dx, startY+dir.dy
-		if nx >= 0 && nx < width && ny >= 0 && ny < height {
-			walls = append(walls, struct{ x, y int }{nx, ny})
+		nx, ny := start.x+dir.x, start.y+dir.y
+		if inBounds(nx, ny, width, height) {
+			walls = append(walls, Point{nx, ny})
 		}
 	}
 
 	for len(walls) > 0 {
-		// Pick a random wall from the frontier
 		idx := rand.Intn(len(walls))
 		wall := walls[idx]
-		walls = append(walls[:idx], walls[idx+1:]...)
+		walls = removeAt(walls, idx)
 
-		// Check if the wall is still a wall
 		if d.Cells[wall.y][wall.x].Type != Wall {
 			continue
 		}
 
-		// Find visited neighbors (two cells away)
-		var visitedNeighbors [][2]int
+		var neighbors []Point
 		for _, dir := range dirs {
-			nx, ny := wall.x+dir.dx, wall.y+dir.dy
-			if nx >= 0 && nx < width && ny >= 0 && ny < height && d.Cells[ny][nx].Type == Empty {
-				visitedNeighbors = append(visitedNeighbors, [2]int{nx, ny})
+			nx, ny := wall.x+dir.x, wall.y+dir.y
+			if inBounds(nx, ny, width, height) && d.Cells[ny][nx].Type == Empty {
+				neighbors = append(neighbors, Point{nx, ny})
 			}
 		}
 
-		if len(visitedNeighbors) > 0 {
-			// Pick a random visited neighbor
-			neighbor := visitedNeighbors[rand.Intn(len(visitedNeighbors))]
-			// Carve the path between the wall and the neighbor
-			midX := (wall.x + neighbor[0]) / 2
-			midY := (wall.y + neighbor[1]) / 2
+		if len(neighbors) > 0 {
+			neighbor := neighbors[rand.Intn(len(neighbors))]
+			midX := (wall.x + neighbor.x) / 2
+			midY := (wall.y + neighbor.y) / 2
 			d.Cells[wall.y][wall.x].Type = Empty
 			d.Cells[midY][midX].Type = Empty
 
-			// Add new frontier walls
 			for _, dir := range dirs {
-				nx, ny := wall.x+dir.dx, wall.y+dir.dy
-				if nx >= 0 && nx < width && ny >= 0 && ny < height && d.Cells[ny][nx].Type == Wall {
-					walls = append(walls, struct{ x, y int }{nx, ny})
+				nx, ny := wall.x+dir.x, wall.y+dir.y
+				if inBounds(nx, ny, width, height) && d.Cells[ny][nx].Type == Wall {
+					walls = append(walls, Point{nx, ny})
 				}
 			}
 		}
 	}
+}
+
+func inBounds(x, y, width, height int) bool {
+	return x >= 0 && x < width && y >= 0 && y < height
+}
+
+func removeAt(points []Point, i int) []Point {
+	return append(points[:i], points[i+1:]...)
 }
 
 func isWithinFOV(px, py, x, y, radius int) bool {
