@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -44,7 +43,17 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Highlight tile on hover
 	if g.hoverX < dungeonWidth && g.hoverY < dungeonHeight {
-		vector.DrawFilledRect(screen, float32(g.hoverX*tileSize), float32(g.hoverY*tileSize), float32(tileSize), float32(tileSize), color.RGBA{255, 255, 255, 100}, false)
+		vector.StrokeRect(
+			screen,
+			float32(g.hoverX*tileSize),
+			float32(g.hoverY*tileSize),
+			float32(tileSize),
+			float32(tileSize),
+			1.5, // thickness
+			color.RGBA{255, 255, 255, 180},
+			false,
+		)
+
 	}
 
 	// Display player stats
