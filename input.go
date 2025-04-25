@@ -13,7 +13,7 @@ func HandleInput(g *Game, player *Player) {
 		mouseX, mouseY := ebiten.CursorPosition()
 		tileX, tileY := mouseX/tileSize, mouseY/tileSize
 
-		if tileX < dungeonWidth && tileY < dungeonHeight {
+		if tileX < g.dungeon.Width && tileY < g.dungeon.Height {
 			// Move player to the tile clicked on, using the interaction handler
 			g.player.MoveTo(tileX, tileY, g.dungeon, g.interactionHandler)
 		}

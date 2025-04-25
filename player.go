@@ -2,6 +2,7 @@ package main
 
 import (
 	"image/color"
+	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -56,9 +57,14 @@ func (p *Player) MoveTo(targetX, targetY int, dungeon *Dungeon, interactionHandl
 
 			// Special handling for exit
 			if cell.Type == Exit {
-				// Generate new dungeon level
+				// Generate new random dimensions for the next dungeon
+				newWidth := 40 + rand.Intn(30) // 40–69
+				newHeight := 12 + rand.Intn(8) // 12–19
+
 				newLevel := dungeon.Level + 1
-				*dungeon = *NewDungeon(dungeon.Width, dungeon.Height, newLevel)
+				*dungeon = *NewDungeon(newWidth, newHeight, newLevel)
+
+				// Move player to the new entrance
 				p.X, p.Y = dungeon.Entrance[0], dungeon.Entrance[1]
 				return
 			}

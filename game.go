@@ -17,8 +17,8 @@ type Game struct {
 	interactionHandler *InteractionHandler
 }
 
-func NewGame() *Game {
-	dungeon := NewDungeon(dungeonWidth, dungeonHeight, 1)
+func NewGame(width, height int) *Game {
+	dungeon := NewDungeon(width, height, 1)
 	player := NewPlayer(dungeon.Entrance)
 
 	// Create the interaction handler
@@ -41,7 +41,7 @@ func (g *Game) Update() error {
 	g.hoverX, g.hoverY = mouseX/tileSize, mouseY/tileSize
 
 	// Calculate path to hover position
-	if g.hoverX >= 0 && g.hoverX < dungeonWidth && g.hoverY >= 0 && g.hoverY < dungeonHeight {
+	if g.hoverX >= 0 && g.hoverX < g.dungeon.Width && g.hoverY >= 0 && g.hoverY < g.dungeon.Height {
 		// Get the path from player position to hover position
 		path := g.dungeon.FindPath(Point{g.player.X, g.player.Y}, Point{g.hoverX, g.hoverY})
 
@@ -95,12 +95,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if len(g.pathToHover) > 0 {
 		for i, p := range g.pathToHover {
 			// Use a gradient from blue to red based on distance
+			// Use a subtle gradient of cool grays
 			gradient := float32(i) / float32(len(g.pathToHover))
+			shade := uint8(60 + 40*gradient) // Range: 60–100
 			pathColor := color.RGBA{
-				uint8(50 + 150*gradient),  // Increase red as we get further
-				50,                        // Constant green
-				uint8(200 - 150*gradient), // Decrease blue as we get further
-				100,                       // Semi-transparent
+				shade,
+				shade,
+				uint8(shade + 10), // Slight bluish tint
+				70,                // More subtle transparency
 			}
 
 			// Draw the path tile
@@ -113,25 +115,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				pathColor,
 				false,
 			)
-
-			// Add a small border to make it more visible
-			vector.StrokeRect(
-				screen,
-				float32(p[0]*tileSize),
-				float32(p[1]*tileSize),
-				float32(tileSize),
-				float32(tileSize),
-				1.0,                            // Thin border
-				color.RGBA{255, 255, 255, 200}, // White border
-				false,
-			)
 		}
 	}
 
 	g.player.Draw(screen)
 
 	// Highlight the hovered tile
-	if g.hoverX < dungeonWidth && g.hoverY < dungeonHeight {
+	if g.hoverX < g.dungeon.Width && g.hoverY < g.dungeon.Height {
 		vector.StrokeRect(
 			screen,
 			float32(g.hoverX*tileSize),
