@@ -314,51 +314,72 @@ func isWithinFOV(px, py, x, y, radius int) bool {
 func (d *Dungeon) Draw(screen *ebiten.Image, player *Player) {
 	for y, row := range d.Cells {
 		for x, cell := range row {
-			// If FOV is enabled and tile is outside it
-			if player.FOVEnabled && !isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
-				if !d.Visited[y][x] {
-					continue // Never seen and out of FOV
-				}
-			} else {
-				// Inside current FOV – mark as visited
+			withinFOV := isWithinFOV(player.X, player.Y, x, y, player.FOVRadius)
+
+			// Skip drawing if not visible and never visited
+			if player.FOVEnabled && !withinFOV && !d.Visited[y][x] {
+				continue
+			}
+
+			// Mark as visited if within FOV
+			if withinFOV {
 				d.Visited[y][x] = true
 			}
 
-			var clr color.RGBA
-			switch cell.Type {
-			case Empty:
-				clr = color.RGBA{30, 30, 30, 255}
-			case Wall:
-				clr = color.RGBA{0, 0, 0, 255}
-			case Monster:
-				if isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
-					clr = color.RGBA{255, 0, 0, 255}
-				} else {
-					clr = color.RGBA{30, 30, 30, 255}
-				}
-			case Treasure:
-				if isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
-					clr = color.RGBA{255, 215, 0, 255}
-				} else {
-					clr = color.RGBA{30, 30, 30, 255}
-				}
-			case Entrance:
-				clr = color.RGBA{0, 255, 0, 255}
-			case Exit:
-				if isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
-					clr = color.RGBA{0, 0, 255, 255}
-				} else {
-					clr = color.RGBA{30, 30, 30, 255}
-				}
+			clr := getCellColor(cell.Type, withinFOV)
+
+			// Darken tile if seen before but not in current FOV
+			if player.FOVEnabled && !withinFOV {
+				clr = darkenColor(clr)
 			}
 
-			// Darken if previously visited but out of current FOV
-			if player.FOVEnabled && !isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
-				clr = color.RGBA{clr.R / 2, clr.G / 2, clr.B / 2, clr.A}
-			}
-
-			vector.DrawFilledRect(screen, float32(x*tileSize), float32(y*tileSize), float32(tileSize), float32(tileSize), clr, false)
+			vector.DrawFilledRect(
+				screen,
+				float32(x*tileSize),
+				float32(y*tileSize),
+				float32(tileSize),
+				float32(tileSize),
+				clr,
+				false,
+			)
 		}
+	}
+}
+func getCellColor(cellType CellType, visible bool) color.RGBA {
+	dimColor := color.RGBA{30, 30, 30, 255}
+
+	if !visible {
+		// Return dimmed default for hidden tiles
+		switch cellType {
+		case Monster, Treasure, Exit:
+			return dimColor
+		}
+	}
+
+	switch cellType {
+	case Empty:
+		return color.RGBA{30, 30, 30, 255}
+	case Wall:
+		return color.RGBA{0, 0, 0, 255}
+	case Monster:
+		return color.RGBA{255, 0, 0, 255}
+	case Treasure:
+		return color.RGBA{255, 215, 0, 255}
+	case Entrance:
+		return color.RGBA{0, 255, 0, 255}
+	case Exit:
+		return color.RGBA{0, 0, 255, 255}
+	default:
+		return color.RGBA{255, 255, 255, 255} // fallback
+	}
+}
+
+func darkenColor(c color.RGBA) color.RGBA {
+	return color.RGBA{
+		R: c.R / 2,
+		G: c.G / 2,
+		B: c.B / 2,
+		A: c.A,
 	}
 }
 
