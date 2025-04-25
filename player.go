@@ -10,24 +10,65 @@ import (
 type Player struct {
 	X, Y       int
 	Health     int
+	MaxHealth  int
 	Score      int
 	FOVEnabled bool
 	FOVRadius  int
 	Path       []Point // A list of points (tiles) the player will follow
 
+	// New player stats that affect interactions
+	Defense    int // Reduces damage from monsters
+	Luck       int // Increases treasure value
+	Level      int // Player's current level
+	Experience int // Experience points
 }
 
 func NewPlayer(startPos [2]int) *Player {
-	return &Player{X: startPos[0], Y: startPos[1], Health: 100, Score: 0, FOVEnabled: false, FOVRadius: 6}
+	return &Player{
+		X:          startPos[0],
+		Y:          startPos[1],
+		Health:     100,
+		MaxHealth:  100,
+		Score:      0,
+		FOVEnabled: false,
+		FOVRadius:  6,
+		Defense:    10, // 10% damage reduction
+		Luck:       5,  // 5% treasure value increase
+		Level:      1,
+		Experience: 0,
+	}
 }
 
-func (p *Player) MoveTo(targetX, targetY int, dungeon *Dungeon) {
+func (p *Player) MoveTo(targetX, targetY int, dungeon *Dungeon, interactionHandler *InteractionHandler) {
 	path := dungeon.FindPath(Point{p.X, p.Y}, Point{targetX, targetY})
 	if len(path) > 1 {
-		// Check if the next step is not a monster or treasure
 		next := path[1]
 		cell := dungeon.Cells[next.y][next.x]
-		if cell.Type != Monster && cell.Type != Treasure {
+
+		// Handle interaction for special cells
+		if cell.Type == Monster || cell.Type == Treasure || cell.Type == Exit {
+			result := interactionHandler.Handle(cell.Type, p)
+
+			// If the interaction removes the entity, clear the cell
+			if result.RemoveEntity {
+				dungeon.Cells[next.y][next.x].Type = Empty
+			}
+
+			// Special handling for exit
+			if cell.Type == Exit {
+				// Generate new dungeon level
+				newLevel := dungeon.Level + 1
+				*dungeon = *NewDungeon(dungeon.Width, dungeon.Height, newLevel)
+				p.X, p.Y = dungeon.Entrance[0], dungeon.Entrance[1]
+				return
+			}
+
+			// Move to the cell if it's now empty
+			if dungeon.Cells[next.y][next.x].Type == Empty {
+				p.Path = path[1:2] // Just move one step
+			}
+		} else {
+			// Normal movement for empty cells
 			p.Path = path[1:] // Exclude current position
 		}
 	}
@@ -44,6 +85,7 @@ func abs(n int) int {
 func (p *Player) Draw(screen *ebiten.Image) {
 	vector.DrawFilledRect(screen, float32(p.X*tileSize), float32(p.Y*tileSize), float32(tileSize), float32(tileSize), color.White, false)
 }
+
 func (p *Player) Update(dungeon *Dungeon) {
 	if len(p.Path) > 0 {
 		next := p.Path[0]

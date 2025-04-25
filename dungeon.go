@@ -20,7 +20,9 @@ const (
 )
 
 type Cell struct {
-	Type CellType
+	Type             CellType
+	InteractionLevel int    // Difficulty/value level for interactions
+	TreasureType     string // For treasure cells, what kind of treasure
 }
 
 type Dungeon struct {
@@ -37,6 +39,7 @@ const (
 	NumTreasures = 10
 )
 
+// Modify the NewDungeon function to initialize monsters and treasures with levels
 func NewDungeon(width, height int, level int) *Dungeon {
 	d := &Dungeon{
 		Cells:   make([][]Cell, height),
@@ -50,7 +53,7 @@ func NewDungeon(width, height int, level int) *Dungeon {
 		d.Cells[y] = make([]Cell, width)
 		d.Visited[y] = make([]bool, width)
 		for x := 0; x < width; x++ {
-			d.Cells[y][x] = Cell{Type: Wall}
+			d.Cells[y][x] = Cell{Type: Wall, InteractionLevel: 0, TreasureType: ""}
 			d.Visited[y][x] = false
 		}
 	}
@@ -72,7 +75,7 @@ func NewDungeon(width, height int, level int) *Dungeon {
 	// Place exit at the furthest dead end
 	if len(deadEnds) > 0 {
 		exitX, exitY := deadEnds[0][0], deadEnds[0][1]
-		d.Cells[exitY][exitX] = Cell{Type: Exit}
+		d.Cells[exitY][exitX] = Cell{Type: Exit, InteractionLevel: level + 1}
 		d.Exit = [2]int{exitX, exitY}
 	} else {
 		// Fallback if no suitable dead ends found
@@ -84,6 +87,7 @@ func NewDungeon(width, height int, level int) *Dungeon {
 			dx, dy := entranceX-exitX, entranceY-exitY
 			distance := dx*dx + dy*dy
 			if distance >= minDistance*minDistance {
+				d.Cells[exitY][exitX].InteractionLevel = level + 1
 				d.Exit = [2]int{exitX, exitY}
 				break
 			}
@@ -92,14 +96,31 @@ func NewDungeon(width, height int, level int) *Dungeon {
 		}
 	}
 
-	// Place monsters in valid locations (empty cells only)
+	// Place monsters with varying levels based on dungeon level
 	for i := 0; i < NumMonsters; i++ {
-		d.placeRandomFeature(Empty, Monster)
+		x, y := d.placeRandomFeature(Empty, Monster)
+		// Monsters get harder as you go deeper and some variation per monster
+		monsterLevel := level + rand.Intn(3) - 1
+		if monsterLevel < 1 {
+			monsterLevel = 1
+		}
+		d.Cells[y][x].InteractionLevel = monsterLevel
 	}
 
-	// Place treasures in valid locations (empty cells only)
+	// Place treasures with varying values based on dungeon level
+	treasureTypes := []string{"gold", "gems", "artifact", "potion"}
 	for i := 0; i < NumTreasures; i++ {
-		d.placeRandomFeature(Empty, Treasure)
+		x, y := d.placeRandomFeature(Empty, Treasure)
+		// Treasures get more valuable deeper and some variation per treasure
+		treasureValue := level*10 + rand.Intn(20) - 10
+		if treasureValue < 10 {
+			treasureValue = 10
+		}
+		d.Cells[y][x].InteractionLevel = treasureValue
+
+		// Randomly select a treasure type
+		treasureType := treasureTypes[rand.Intn(len(treasureTypes))]
+		d.Cells[y][x].TreasureType = treasureType
 	}
 
 	return d

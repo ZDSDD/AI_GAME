@@ -10,16 +10,30 @@ import (
 )
 
 type Game struct {
-	dungeon        *Dungeon
-	player         *Player
-	hoverX, hoverY int
-	pathToHover    [][2]int
+	dungeon            *Dungeon
+	player             *Player
+	hoverX, hoverY     int
+	pathToHover        [][2]int
+	interactionHandler *InteractionHandler
 }
 
 func NewGame() *Game {
 	dungeon := NewDungeon(dungeonWidth, dungeonHeight, 1)
 	player := NewPlayer(dungeon.Entrance)
-	return &Game{dungeon: dungeon, player: player}
+
+	// Create the interaction handler
+	interactionHandler := NewInteractionHandler()
+
+	// Register interactions for different cell types
+	interactionHandler.Register(Monster, NewMonsterInteraction(1))            // Default level 1
+	interactionHandler.Register(Treasure, NewTreasureInteraction(10, "gold")) // Default 10 gold
+	interactionHandler.Register(Exit, NewExitInteraction(2))                  // Go to level 2
+
+	return &Game{
+		dungeon:            dungeon,
+		player:             player,
+		interactionHandler: interactionHandler,
+	}
 }
 
 func (g *Game) Update() error {
@@ -52,6 +66,24 @@ func (g *Game) Update() error {
 
 	HandleInput(g, g.player)
 	g.player.Update(g.dungeon)
+
+	// Update interaction logic for cell types that change each level
+	// This ensures that when a new level is generated, the interaction
+	// system has the correct values for each cell type
+	for y := 0; y < g.dungeon.Height; y++ {
+		for x := 0; x < g.dungeon.Width; x++ {
+			cell := g.dungeon.Cells[y][x]
+
+			switch cell.Type {
+			case Monster:
+				g.interactionHandler.Register(Monster, NewMonsterInteraction(cell.InteractionLevel))
+			case Treasure:
+				g.interactionHandler.Register(Treasure, NewTreasureInteraction(cell.InteractionLevel, cell.TreasureType))
+			case Exit:
+				g.interactionHandler.Register(Exit, NewExitInteraction(g.dungeon.Level+1))
+			}
+		}
+	}
 
 	return nil
 }
@@ -110,10 +142,50 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			color.RGBA{255, 255, 255, 180},
 			false,
 		)
+
+		// Show info about the hovered cell
+		if g.hoverX >= 0 && g.hoverY >= 0 && g.hoverX < g.dungeon.Width && g.hoverY < g.dungeon.Height {
+			cell := g.dungeon.Cells[g.hoverY][g.hoverX]
+			var cellInfo string
+
+			switch cell.Type {
+			case Monster:
+				cellInfo = fmt.Sprintf("Monster (Level %d)", cell.InteractionLevel)
+			case Treasure:
+				cellInfo = fmt.Sprintf("%s (Value %d)", cell.TreasureType, cell.InteractionLevel)
+			case Exit:
+				cellInfo = fmt.Sprintf("Exit to Level %d", cell.InteractionLevel)
+			case Entrance:
+				cellInfo = "Entrance"
+			case Empty:
+				cellInfo = "Empty"
+			case Wall:
+				cellInfo = "Wall"
+			}
+
+			ebitenutil.DebugPrintAt(screen, cellInfo, g.hoverX*tileSize, g.hoverY*tileSize-10)
+		}
 	}
 
 	// Display player stats
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d, Score: %d | Dungeon Level: %d", g.player.Health, g.player.Score, g.dungeon.Level), 10, 10)
+	statY := 10
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d/%d, Score: %d | Dungeon Level: %d",
+		g.player.Health, g.player.MaxHealth, g.player.Score, g.dungeon.Level), 10, statY)
+	statY += 20
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Player Level: %d | Defense: %d | Luck: %d",
+		g.player.Level, g.player.Defense, g.player.Luck), 10, statY)
+
+	// Display interaction messages
+	statY += 30
+	messages := g.interactionHandler.GetMessages()
+	if len(messages) > 0 {
+		ebitenutil.DebugPrintAt(screen, "Recent events:", 10, statY)
+		statY += 15
+		for i, msg := range messages {
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d. %s", i+1, msg), 10, statY)
+			statY += 15
+		}
+	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {

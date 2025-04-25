@@ -14,8 +14,8 @@ func HandleInput(g *Game, player *Player) {
 		tileX, tileY := mouseX/tileSize, mouseY/tileSize
 
 		if tileX < dungeonWidth && tileY < dungeonHeight {
-			// Move player to the tile clicked on
-			g.player.MoveTo(tileX, tileY, g.dungeon)
+			// Move player to the tile clicked on, using the interaction handler
+			g.player.MoveTo(tileX, tileY, g.dungeon, g.interactionHandler)
 		}
 	}
 
