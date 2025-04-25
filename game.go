@@ -94,18 +94,19 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw path to hover before drawing the player
 	if len(g.pathToHover) > 0 {
 		for i, p := range g.pathToHover {
-			// Use a gradient from blue to red based on distance
-			// Use a subtle gradient of cool grays
-			gradient := float32(i) / float32(len(g.pathToHover))
-			shade := uint8(60 + 40*gradient) // Range: 60–100
+			// Reverse the gradient calculation, the closer tiles are more visible
+			gradient := float32(len(g.pathToHover)-i) / float32(len(g.pathToHover)) // Closer tiles have higher gradient
+			shade := uint8(60 + 40*gradient)
+			// Gradually fade the alpha as the path goes further
+			alpha := uint8(120 - 50*gradient)
+
 			pathColor := color.RGBA{
 				shade,
 				shade,
-				uint8(shade + 10), // Slight bluish tint
-				70,                // More subtle transparency
+				uint8(shade + 10),
+				alpha,
 			}
 
-			// Draw the path tile
 			vector.DrawFilledRect(
 				screen,
 				float32(p[0]*tileSize),

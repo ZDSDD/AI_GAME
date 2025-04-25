@@ -9,13 +9,15 @@ import (
 )
 
 type Player struct {
-	X, Y       int
-	Health     int
-	MaxHealth  int
-	Score      int
-	FOVEnabled bool
-	FOVRadius  int
-	Path       []Point // A list of points (tiles) the player will follow
+	X, Y         int
+	Health       int
+	MaxHealth    int
+	Score        int
+	FOVEnabled   bool
+	FOVRadius    int
+	moveCooldown int // frames until next move
+
+	Path []Point // A list of points (tiles) the player will follow
 
 	// New player stats that affect interactions
 	Defense    int // Reduces damage from monsters
@@ -26,17 +28,18 @@ type Player struct {
 
 func NewPlayer(startPos [2]int) *Player {
 	return &Player{
-		X:          startPos[0],
-		Y:          startPos[1],
-		Health:     100,
-		MaxHealth:  100,
-		Score:      0,
-		FOVEnabled: true,
-		FOVRadius:  6,
-		Defense:    10, // 10% damage reduction
-		Luck:       5,  // 5% treasure value increase
-		Level:      1,
-		Experience: 0,
+		X:            startPos[0],
+		Y:            startPos[1],
+		Health:       100,
+		MaxHealth:    100,
+		Score:        0,
+		FOVEnabled:   true,
+		FOVRadius:    6,
+		Defense:      10, // 10% damage reduction
+		Luck:         5,  // 5% treasure value increase
+		Level:        1,
+		Experience:   0,
+		moveCooldown: 0,
 	}
 }
 
@@ -93,6 +96,11 @@ func (p *Player) Draw(screen *ebiten.Image) {
 }
 
 func (p *Player) Update(dungeon *Dungeon) {
+	if p.moveCooldown > 0 {
+		p.moveCooldown--
+		return
+	}
+
 	if len(p.Path) > 0 {
 		next := p.Path[0]
 		cell := dungeon.Cells[next.y][next.x]
@@ -106,5 +114,8 @@ func (p *Player) Update(dungeon *Dungeon) {
 		// Move to the next tile
 		p.X, p.Y = next.x, next.y
 		p.Path = p.Path[1:]
+
+		// Reset movement delay (e.g., 10 frames)
+		p.moveCooldown = 10
 	}
 }
