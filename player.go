@@ -30,7 +30,7 @@ func NewPlayer(startPos [2]int) *Player {
 		Health:     100,
 		MaxHealth:  100,
 		Score:      0,
-		FOVEnabled: false,
+		FOVEnabled: true,
 		FOVRadius:  6,
 		Defense:    10, // 10% damage reduction
 		Luck:       5,  // 5% treasure value increase

@@ -19,10 +19,49 @@ const (
 	Exit
 )
 
+func (ct CellType) String() string {
+	switch ct {
+	case Empty:
+		return "Empty"
+	case Wall:
+		return "Wall"
+	case Monster:
+		return "Monster"
+	case Treasure:
+		return "Treasure"
+	case Entrance:
+		return "Entrance"
+	case Exit:
+		return "Exit"
+	default:
+		return "Unknown"
+	}
+}
+
+// Optional: More structured data for monster & treasure classification
+type TreasureType string
+
+const (
+	TreasureGold     TreasureType = "gold"
+	TreasureGems     TreasureType = "gems"
+	TreasureArtifact TreasureType = "artifact"
+	TreasurePotion   TreasureType = "potion"
+)
+
+type MonsterTier int
+
+const (
+	TierEasy MonsterTier = iota
+	TierMedium
+	TierHard
+	TierBoss
+)
+
 type Cell struct {
 	Type             CellType
-	InteractionLevel int    // Difficulty/value level for interactions
-	TreasureType     string // For treasure cells, what kind of treasure
+	InteractionLevel int          // Difficulty (monster) or value (treasure)
+	TreasureType     TreasureType // Specific treasure variant
+	MonsterTier      MonsterTier  // Optional: Add more scaling/behavior if needed
 }
 
 type Dungeon struct {
@@ -96,30 +135,45 @@ func NewDungeon(width, height int, level int) *Dungeon {
 		}
 	}
 
-	// Place monsters with varying levels based on dungeon level
+	// Place monsters with varying levels and tiers based on dungeon level
 	for i := 0; i < NumMonsters; i++ {
 		x, y := d.placeRandomFeature(Empty, Monster)
-		// Monsters get harder as you go deeper and some variation per monster
+
+		// Monster level and tier logic
 		monsterLevel := level + rand.Intn(3) - 1
 		if monsterLevel < 1 {
 			monsterLevel = 1
 		}
+
+		var tier MonsterTier
+		switch {
+		case monsterLevel <= 2:
+			tier = TierEasy
+		case monsterLevel <= 4:
+			tier = TierMedium
+		case monsterLevel <= 6:
+			tier = TierHard
+		default:
+			tier = TierBoss
+		}
+
 		d.Cells[y][x].InteractionLevel = monsterLevel
+		d.Cells[y][x].MonsterTier = tier
 	}
 
-	// Place treasures with varying values based on dungeon level
-	treasureTypes := []string{"gold", "gems", "artifact", "potion"}
+	// Place treasures with type-safe treasure types
+	treasureTypes := []TreasureType{TreasureGold, TreasureGems, TreasureArtifact, TreasurePotion}
 	for i := 0; i < NumTreasures; i++ {
 		x, y := d.placeRandomFeature(Empty, Treasure)
-		// Treasures get more valuable deeper and some variation per treasure
+
 		treasureValue := level*10 + rand.Intn(20) - 10
 		if treasureValue < 10 {
 			treasureValue = 10
 		}
-		d.Cells[y][x].InteractionLevel = treasureValue
 
-		// Randomly select a treasure type
 		treasureType := treasureTypes[rand.Intn(len(treasureTypes))]
+
+		d.Cells[y][x].InteractionLevel = treasureValue
 		d.Cells[y][x].TreasureType = treasureType
 	}
 
@@ -277,13 +331,25 @@ func (d *Dungeon) Draw(screen *ebiten.Image, player *Player) {
 			case Wall:
 				clr = color.RGBA{0, 0, 0, 255}
 			case Monster:
-				clr = color.RGBA{255, 0, 0, 255}
+				if isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
+					clr = color.RGBA{255, 0, 0, 255}
+				} else {
+					clr = color.RGBA{30, 30, 30, 255}
+				}
 			case Treasure:
-				clr = color.RGBA{255, 215, 0, 255}
+				if isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
+					clr = color.RGBA{255, 215, 0, 255}
+				} else {
+					clr = color.RGBA{30, 30, 30, 255}
+				}
 			case Entrance:
 				clr = color.RGBA{0, 255, 0, 255}
 			case Exit:
-				clr = color.RGBA{0, 0, 255, 255}
+				if isWithinFOV(player.X, player.Y, x, y, player.FOVRadius) {
+					clr = color.RGBA{0, 0, 255, 255}
+				} else {
+					clr = color.RGBA{30, 30, 30, 255}
+				}
 			}
 
 			// Darken if previously visited but out of current FOV
