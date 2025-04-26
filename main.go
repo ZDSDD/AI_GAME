@@ -2,31 +2,28 @@ package main
 
 import (
 	"log"
-	"math/rand"
-	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+// This is now a global variable so it can be modified by game settings
+var tileSize = 16
+
+// Default constants that will be overridden by user settings
 const (
 	screenWidth  = 1280
 	screenHeight = 720
-	tileSize     = 16
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Procedural Dungeon")
 
-	// Generate random dungeon dimensions
-	randomWidth := 40 + rand.Intn(30) // 40–69 tiles wide
-	randomHeight := 12 + rand.Intn(8) // 12–19 tiles high
+	// Create the main game with menu
+	mainGame := NewMainGame()
 
-	game := NewGame(randomWidth, randomHeight)
-
-	if err := ebiten.RunGame(game); err != nil {
+	if err := ebiten.RunGame(mainGame); err != nil {
 		log.Fatal(err)
 	}
 }
