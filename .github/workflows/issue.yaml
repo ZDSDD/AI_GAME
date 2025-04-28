@@ -1,0 +1,49 @@
+name: Inherit from Parent Issue
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  inherit-attributes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check and Inherit Attributes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body;
+
+            // Look for "Parent: #123"
+            const parentMatch = body.match(/Parent:\s?#(\d+)/);
+            if (!parentMatch) {
+              console.log("No parent issue found. Skipping inheritance.");
+              return;
+            }
+
+            const parentIssueNumber = parentMatch[1];
+            console.log(`Found parent issue: #${parentIssueNumber}`);
+
+            // Fetch parent issue
+            const parent = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parentIssueNumber
+            });
+
+            // What attributes to inherit?
+            const labels = parent.data.labels.map(label => label.name);
+            const milestone = parent.data.milestone?.number || null;
+            const assignees = parent.data.assignees.map(assignee => assignee.login);
+
+            // Update current issue
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: labels,
+              milestone: milestone,
+              assignees: assignees
+            });
+
+            console.log(`Attributes inherited from #${parentIssueNumber}`);
