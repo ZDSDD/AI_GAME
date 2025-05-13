@@ -64,6 +64,9 @@ func (g *Game) Update() error {
 		g.pathToHover = nil
 	}
 
+	// Update the message timestamps
+	g.interactionHandler.UpdateMessages()
+
 	HandleInput(g, g.player)
 	g.player.Update(g.dungeon)
 
@@ -166,15 +169,45 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Player Level: %d | Defense: %d | Luck: %d",
 		g.player.Level, g.player.Defense, g.player.Luck), 10, statY)
 
-	// Display interaction messages
-	statY += 30
+	// Display interaction messages with very subtle transparency
 	messages := g.interactionHandler.GetMessages()
 	if len(messages) > 0 {
-		ebitenutil.DebugPrintAt(screen, "Recent events:", 10, statY)
+		// No background box - keep it minimal
 		statY += 15
+
+		// Use very faint text for all messages
 		for i, msg := range messages {
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d. %s", i+1, msg), 10, statY)
-			statY += 15
+			// Calculate alpha value based on message age - make ALL messages very subtle
+			// Starting with a very low base alpha
+			baseAlpha := 100 // Much lower base alpha
+			alpha := uint8(baseAlpha - (i * 20))
+			if alpha < 25 {
+				alpha = 25 // Minimum visibility
+			}
+
+			// Draw a very subtle background for each message
+			vector.DrawFilledRect(
+				screen,
+				10,
+				float32(statY-2),
+				300,
+				16,
+				color.RGBA{0, 0, 0, alpha / 3}, // Very low alpha for the background
+				false,
+			)
+
+			// Draw the message text
+			// Using a lower alpha value for the background
+			// Note: We can't directly control text alpha with DebugPrintAt
+
+			// Use a short prefix for less visual impact
+			ebitenutil.DebugPrintAt(
+				screen,
+				fmt.Sprintf("· %s", msg), // Smaller bullet point
+				12,
+				statY)
+			statY += 15 // Reduced line spacing
+			statY += 20
 		}
 	}
 }
