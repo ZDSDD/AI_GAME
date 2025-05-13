@@ -103,6 +103,11 @@ func (p *Player) Update(dungeon *Dungeon) {
 
 	if len(p.Path) > 0 {
 		next := p.Path[0]
+
+		// Probably dungeon update
+		if !inBounds(next.x, next.y, dungeon.Width, dungeon.Height) {
+			return
+		}
 		cell := dungeon.Cells[next.y][next.x]
 
 		// Stop if the next cell is not walkable

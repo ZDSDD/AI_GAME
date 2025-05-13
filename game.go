@@ -36,9 +36,25 @@ func NewGame(width, height int) *Game {
 	}
 }
 
+// You'll also need to adjust the Update method to account for the margins when calculating hover position
+
 func (g *Game) Update() error {
+	// Define the same margin values used in Draw
+	const marginX, marginY = 20, 40
+
 	mouseX, mouseY := ebiten.CursorPosition()
-	g.hoverX, g.hoverY = mouseX/tileSize, mouseY/tileSize
+
+	// Adjust mouse coordinates to account for margins
+	adjustedMouseX := mouseX - marginX
+	adjustedMouseY := mouseY - marginY
+
+	// Convert to tile coordinates (if within the valid area)
+	if adjustedMouseX >= 0 && adjustedMouseY >= 0 {
+		g.hoverX, g.hoverY = adjustedMouseX/tileSize, adjustedMouseY/tileSize
+	} else {
+		// Mouse is in the margin area
+		g.hoverX, g.hoverY = -1, -1
+	}
 
 	// Calculate path to hover position
 	if g.hoverX >= 0 && g.hoverX < g.dungeon.Width && g.hoverY >= 0 && g.hoverY < g.dungeon.Height {
@@ -92,7 +108,18 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.dungeon.Draw(screen, g.player)
+	// Define margin values
+	const marginX, marginY = 20, 40 // You can adjust these values as needed
+
+	// Create a rendering context with translation for the margins
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(marginX), float64(marginY))
+
+	// Use a sub-screen approach to implement the margin
+	dungeonScreen := ebiten.NewImage(screenWidth-2*marginX, screenHeight-2*marginY)
+
+	// Draw dungeon to the sub-screen
+	g.dungeon.Draw(dungeonScreen, g.player)
 
 	// Draw path to hover before drawing the player
 	if len(g.pathToHover) > 0 {
@@ -111,7 +138,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			}
 
 			vector.DrawFilledRect(
-				screen,
+				dungeonScreen,
 				float32(p[0]*tileSize),
 				float32(p[1]*tileSize),
 				float32(tileSize),
@@ -122,14 +149,18 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	g.player.Draw(screen)
+	// Draw player on the sub-screen
+	g.player.Draw(dungeonScreen)
 
-	// Highlight the hovered tile
+	// Draw the sub-screen to the main screen with margins
+	screen.DrawImage(dungeonScreen, op)
+
+	// Highlight the hovered tile (needs to be adjusted for margins)
 	if g.hoverX < g.dungeon.Width && g.hoverY < g.dungeon.Height {
 		vector.StrokeRect(
 			screen,
-			float32(g.hoverX*tileSize),
-			float32(g.hoverY*tileSize),
+			float32(g.hoverX*tileSize+marginX),
+			float32(g.hoverY*tileSize+marginY),
 			float32(tileSize),
 			float32(tileSize),
 			1.5, // thickness
@@ -137,7 +168,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			false,
 		)
 
-		// Show info about the hovered cell
+		// Show info about the hovered cell (adjusted for margins)
 		if g.hoverX >= 0 && g.hoverY >= 0 && g.hoverX < g.dungeon.Width && g.hoverY < g.dungeon.Height {
 			cell := g.dungeon.Cells[g.hoverY][g.hoverX]
 			var cellInfo string
@@ -157,11 +188,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				cellInfo = "Wall"
 			}
 
-			ebitenutil.DebugPrintAt(screen, cellInfo, g.hoverX*tileSize, g.hoverY*tileSize-10)
+			ebitenutil.DebugPrintAt(screen, cellInfo, g.hoverX*tileSize+marginX, g.hoverY*tileSize+marginY-10)
 		}
 	}
 
-	// Display player stats
+	// Display player stats (at the top with some padding)
 	statY := 10
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Health: %d/%d, Score: %d | Dungeon Level: %d",
 		g.player.Health, g.player.MaxHealth, g.player.Score, g.dungeon.Level), 10, statY)

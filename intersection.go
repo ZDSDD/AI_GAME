@@ -113,7 +113,7 @@ func NewInteractionHandler() *InteractionHandler {
 	return &InteractionHandler{
 		Interactions: make(map[CellType]Interactable),
 		Messages:     make([]TimedMessage, 0, 5),
-		MessageLife:  1.5, // Default 1 second lifetime
+		MessageLife:  3.5, // Default 1 second lifetime
 	}
 }
 
