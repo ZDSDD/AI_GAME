@@ -98,7 +98,7 @@ func NewDungeon(width, height int, level int) *Dungeon {
 	}
 
 	// Generate maze with proper paths
-	d.generateMaze(d.Width, d.Height)
+	d.generateMaze()
 
 	// Place entrance
 	entranceX, entranceY := d.placeRandomFeature(Empty, Entrance)
@@ -244,55 +244,106 @@ func (d *Dungeon) placeRandomFeature(requiredType, newType CellType) (int, int) 
 
 type Point struct{ x, y int }
 
-func (d *Dungeon) generateMaze(width, height int) {
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			d.Cells[y][x].Type = Wall
-		}
-	}
+// Generates a randomized maze within the dungeon. (Randomized Prim’s Algorithm)
+func (d *Dungeon) generateMaze() {
+	// Initialize all cells as walls
+	d.fillWithWalls()
 
+	// Directions for movement: left, right, up, down (in steps of 2 for maze structure)
 	dirs := []Point{{-2, 0}, {2, 0}, {0, -2}, {0, 2}}
 	start := Point{1, 1}
-	d.Cells[start.y][start.x].Type = Empty
+	d.setCellEmpty(start)
 
-	walls := []Point{}
-	for _, dir := range dirs {
-		nx, ny := start.x+dir.x, start.y+dir.y
-		if inBounds(nx, ny, width, height) {
-			walls = append(walls, Point{nx, ny})
-		}
-	}
+	// Initialize the wall list from the start point's neighbors
+	walls := d.getInitialWalls(start, dirs)
 
+	// Main loop: continue until no walls are left to process
 	for len(walls) > 0 {
-		idx := rand.Intn(len(walls))
-		wall := walls[idx]
-		walls = removeAt(walls, idx)
+		wall := d.randomWall(&walls) // Pick and remove a random wall
 
-		if d.Cells[wall.y][wall.x].Type != Wall {
+		// Skip if this wall is already part of the path
+		if d.isEmpty(wall) {
 			continue
 		}
 
-		var neighbors []Point
-		for _, dir := range dirs {
-			nx, ny := wall.x+dir.x, wall.y+dir.y
-			if inBounds(nx, ny, width, height) && d.Cells[ny][nx].Type == Empty {
-				neighbors = append(neighbors, Point{nx, ny})
-			}
-		}
-
+		// Get valid empty neighbors
+		neighbors := d.getEmptyNeighbors(wall, dirs)
 		if len(neighbors) > 0 {
+			// Connect the wall with a randomly chosen neighbor
 			neighbor := neighbors[rand.Intn(len(neighbors))]
-			midX := (wall.x + neighbor.x) / 2
-			midY := (wall.y + neighbor.y) / 2
-			d.Cells[wall.y][wall.x].Type = Empty
-			d.Cells[midY][midX].Type = Empty
+			d.carvePath(wall, neighbor)
 
-			for _, dir := range dirs {
-				nx, ny := wall.x+dir.x, wall.y+dir.y
-				if inBounds(nx, ny, width, height) && d.Cells[ny][nx].Type == Wall {
-					walls = append(walls, Point{nx, ny})
-				}
-			}
+			// Add adjacent walls of the current wall to the list
+			d.addAdjacentWalls(wall, dirs, &walls)
+		}
+	}
+}
+
+// Fill the entire dungeon with walls.
+func (d *Dungeon) fillWithWalls() {
+	for y := 0; y < d.Height; y++ {
+		for x := 0; x < d.Width; x++ {
+			d.Cells[y][x].Type = Wall
+		}
+	}
+}
+
+// Set a cell to be empty.
+func (d *Dungeon) setCellEmpty(p Point) {
+	d.Cells[p.y][p.x].Type = Empty
+}
+
+// Get the initial wall list from the start point's neighbors.
+func (d *Dungeon) getInitialWalls(start Point, dirs []Point) []Point {
+	walls := []Point{}
+	for _, dir := range dirs {
+		nextX, nextY := start.x+dir.x, start.y+dir.y
+		if inBounds(nextX, nextY, d.Width, d.Height) {
+			walls = append(walls, Point{nextX, nextY})
+		}
+	}
+	return walls
+}
+
+// Randomly select and remove a wall from the list.
+func (d *Dungeon) randomWall(walls *[]Point) Point {
+	idx := rand.Intn(len(*walls))
+	wall := (*walls)[idx]
+	*walls = removeAt(*walls, idx) // Remove selected wall
+	return wall
+}
+
+// Check if a cell is empty.
+func (d *Dungeon) isEmpty(p Point) bool {
+	return d.Cells[p.y][p.x].Type != Wall
+}
+
+// Get valid empty neighbors of a wall.
+func (d *Dungeon) getEmptyNeighbors(wall Point, dirs []Point) []Point {
+	var neighbors []Point
+	for _, dir := range dirs {
+		nextX, nextY := wall.x+dir.x, wall.y+dir.y
+		if inBounds(nextX, nextY, d.Width, d.Height) && d.Cells[nextY][nextX].Type == Empty {
+			neighbors = append(neighbors, Point{nextX, nextY})
+		}
+	}
+	return neighbors
+}
+
+// Carve a path by removing a wall and the mid cell between wall and neighbor.
+func (d *Dungeon) carvePath(wall, neighbor Point) {
+	midX := (wall.x + neighbor.x) / 2
+	midY := (wall.y + neighbor.y) / 2
+	d.setCellEmpty(wall)
+	d.setCellEmpty(Point{midX, midY})
+}
+
+// Add adjacent walls of a given wall to the list.
+func (d *Dungeon) addAdjacentWalls(wall Point, dirs []Point, walls *[]Point) {
+	for _, dir := range dirs {
+		nextX, nextY := wall.x+dir.x, wall.y+dir.y
+		if inBounds(nextX, nextY, d.Width, d.Height) && d.Cells[nextY][nextX].Type == Wall {
+			*walls = append(*walls, Point{nextX, nextY})
 		}
 	}
 }
