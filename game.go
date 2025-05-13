@@ -15,6 +15,8 @@ type Game struct {
 	hoverX, hoverY     int
 	pathToHover        [][2]int
 	interactionHandler *InteractionHandler
+	marginX            int
+	marginY            int
 }
 
 func NewGame(width, height int) *Game {
@@ -33,20 +35,20 @@ func NewGame(width, height int) *Game {
 		dungeon:            dungeon,
 		player:             player,
 		interactionHandler: interactionHandler,
+		marginX:            20,
+		marginY:            40,
 	}
 }
 
 // You'll also need to adjust the Update method to account for the margins when calculating hover position
 
 func (g *Game) Update() error {
-	// Define the same margin values used in Draw
-	const marginX, marginY = 20, 40
 
 	mouseX, mouseY := ebiten.CursorPosition()
 
 	// Adjust mouse coordinates to account for margins
-	adjustedMouseX := mouseX - marginX
-	adjustedMouseY := mouseY - marginY
+	adjustedMouseX := mouseX - g.marginX
+	adjustedMouseY := mouseY - g.marginY
 
 	// Convert to tile coordinates (if within the valid area)
 	if adjustedMouseX >= 0 && adjustedMouseY >= 0 {
@@ -108,15 +110,13 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Define margin values
-	const marginX, marginY = 20, 40 // You can adjust these values as needed
 
 	// Create a rendering context with translation for the margins
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(float64(marginX), float64(marginY))
+	op.GeoM.Translate(float64(g.marginX), float64(g.marginY))
 
 	// Use a sub-screen approach to implement the margin
-	dungeonScreen := ebiten.NewImage(screenWidth-2*marginX, screenHeight-2*marginY)
+	dungeonScreen := ebiten.NewImage(screenWidth-2*g.marginX, screenHeight-2*g.marginY)
 
 	// Draw dungeon to the sub-screen
 	g.dungeon.Draw(dungeonScreen, g.player)
@@ -159,8 +159,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.hoverX < g.dungeon.Width && g.hoverY < g.dungeon.Height {
 		vector.StrokeRect(
 			screen,
-			float32(g.hoverX*tileSize+marginX),
-			float32(g.hoverY*tileSize+marginY),
+			float32(g.hoverX*tileSize+g.marginX),
+			float32(g.hoverY*tileSize+g.marginY),
 			float32(tileSize),
 			float32(tileSize),
 			1.5, // thickness
@@ -188,7 +188,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				cellInfo = "Wall"
 			}
 
-			ebitenutil.DebugPrintAt(screen, cellInfo, g.hoverX*tileSize+marginX, g.hoverY*tileSize+marginY-10)
+			ebitenutil.DebugPrintAt(screen, cellInfo, g.hoverX*tileSize+g.marginX, g.hoverY*tileSize+g.marginY-10)
 		}
 	}
 

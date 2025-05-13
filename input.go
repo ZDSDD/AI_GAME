@@ -8,16 +8,14 @@ var prevKeyState bool
 
 // Handle player input and toggle FOV
 func HandleInput(g *Game, player *Player) {
-	// Define the same margin values used in Draw and Update
-	const marginX, marginY = 20, 40
 
 	// Handle mouse input for movement
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		mouseX, mouseY := ebiten.CursorPosition()
 
 		// Adjust for margins
-		adjustedMouseX := mouseX - marginX
-		adjustedMouseY := mouseY - marginY
+		adjustedMouseX := mouseX - g.marginX
+		adjustedMouseY := mouseY - g.marginY
 
 		// Only process if the click is within the dungeon area (after margin adjustment)
 		if adjustedMouseX >= 0 && adjustedMouseY >= 0 {
@@ -40,4 +38,16 @@ func HandleInput(g *Game, player *Player) {
 
 	// Store current key state for next frame
 	prevKeyState = keyPressed
+	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
+		g.marginY++
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
+		g.marginY--
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
+		g.marginX++
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
+		g.marginX--
+	}
 }
